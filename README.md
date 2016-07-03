@@ -38,7 +38,7 @@ define service{
 ######installation
 [installation page](https://www.nagios.org/downloads/nagios-core/thanks/?t=1467497693) 4.1.1
 ```
-apt-get install gcc g++ make unzip -y
+apt-get install gcc g++ make unzip php5-fpm spawn-fcgi fcgiwrap libgd2-xpm-dev -y
 ```
 ```
 wget https://assets.nagios.com/downloads/nagioscore/releases/nagios-4.1.1.tar.gz
@@ -72,8 +72,12 @@ vim /etc/nagios/objects/contacts.cfg
 ```
 edit
 ```
-contant_name ke
-members ke
+contant_name root
+members root
+```
+or
+```
+:%s/nagiosadmin/root/g
 ```
 then untar plugin
 ```
@@ -89,5 +93,70 @@ check config
 start service
 ```
 service nagios start
+service fcgiwrap restart
+service php5-fpm restart
 ```
+configure nginx
+```
+vim /etc/nginx/sites-available/nagios.busycorp.com.conf
+rm /etc/nginx/sites-enabled/default
+ln -s /etc/nginx/sites-available/nagios.busycorp.com.conf /etc/nginx/sites-enabled
+```
+
+create password
+```
+P=$(openssl passwd -crypt)
+echo $P
+echo "root:${P}" >> /etc/nagios/htpasswd.users
+```
+last step
+```
+service nginx reload
+
+#grant cgi permissions to the UI
+sudo vim /etc/nagios/cgi.cfg
+:%s/nagiosadmin/root/g
+```
+nginx.conf
+```
+server {
+    server_name nagios.busycorp.com;
+    access_log /var/log/nginx/nagios.busycorp.com-access.log;
+    error_log /var/log/nginx/nagios.busycorp.com-error.log;
+ 
+    auth_basic "Private";
+    auth_basic_user_file /etc/nagios/htpasswd.users;
+ 
+    root /var/www/virtualhosts/nagios.busycorp.com;
+    index index.php index.html;
+ 
+    location / {
+        try_files $uri $uri/ index.php /nagios;
+    }
+ 
+    location /nagios {
+        alias /usr/local/nagios/share;
+    }
+ 
+    location ~ ^/nagios/(.*\.php)$ {
+        alias /usr/local/nagios/share/$1;
+        include /etc/nginx/fastcgi_params;
+        fastcgi_pass unix:/var/run/php5-fpm.sock;
+    }
+ 
+    location ~ \.cgi$ {
+            root /usr/local/nagios/sbin/;
+            rewrite ^/nagios/cgi-bin/(.*)\.cgi /$1.cgi break;
+            fastcgi_param AUTH_USER $remote_user;
+            fastcgi_param REMOTE_USER $remote_user;
+            include /etc/nginx/fastcgi_params;
+            fastcgi_pass unix:/var/run/fcgiwrap.socket;
+      }
+ 
+    location ~ \.php$ {
+            include /etc/nginx/fastcgi_params;
+            fastcgi_pass unix:/var/run/php5-fpm.sock;
+      }
+}
+
 ```

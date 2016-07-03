@@ -160,3 +160,70 @@ server {
 }
 
 ```
+######configuring nagios
+```
+vim /etc/nagios/objects/contacts.cfg   //add a real email.
+```
+config
+```
+vim /etc/nagios/nagios.cfg
+```
+edit
+```
+cfg_dir=/etc/nagios/objects
+# You can specify individual object config files as shown below:
+#cfg_file=/usr/local/nagios-4.1.1/etc/objects/commands.cfg
+#cfg_file=/usr/local/nagios-4.1.1/etc/objects/contacts.cfg
+#cfg_file=/usr/local/nagios-4.1.1/etc/objects/timeperiods.cfg
+#cfg_file=/usr/local/nagios-4.1.1/etc/objects/templates.cfg
+# Definitions for monitoring the local (Linux) host
+#cfg_file=/usr/local/nagios-4.1.1/etc/objects/localhost.cfg
+
+# Definitions for monitoring a Windows machine
+#cfg_file=/usr/local/nagios-4.1.1/etc/objects/windows.cfg
+
+# Definitions for monitoring a router/switch
+#cfg_file=/usr/local/nagios-4.1.1/etc/objects/switch.cfg
+
+# Definitions for monitoring a network printer
+#cfg_file=/usr/local/nagios-4.1.1/etc/objects/printer.cfg
+```
+then
+```
+mkdir /etc/nagios/disabled
+mv switch.cfg windows.cfg printer.cfg /etc/nagios/disabled
+service nagios restart
+```
+#####4
+######4nrpe
+
+```
+cd nagios-plugins-2.1.1
+wget -O nrpe.tbz 'http://downloads.sourceforge.net/project/nagios/nrpe-2.x/nrpe-2.15/nrpe-2.15.tar.gz'
+```
+```
+adduser --system --no-create-home --disabled-login --group nagios
+```
+```
+tar zxvf nrpe.tbz
+./configure --enable-command-args
+```
+if ssl error:
+```
+apt-get install libssl-dev -y
+```
+rerun:
+```
+./configure --enable-command-args --with-ssl=/usr/bin/openssl --with-ssl-lib=/usr/lib/x86_64-linux-gnu
+make
+make install-daemon
+cp sample-config/nrpe.cfg /etc/nrpe.cfg
+vim /etc/nrpe.cfg
+```
+edit
+```
+server_address=0.0.0.0
+allowed_hosts=<priip>
+dont_blame_nrpe=1
+debug=1 //temp
+```
